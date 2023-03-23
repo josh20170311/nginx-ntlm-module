@@ -1,9 +1,10 @@
 FROM alpine:3.13
 
 ENV NGINX_VERSION 1.19.3
+ENV NJS_VERSION 0.7.11
 
 
-# install buidl tools
+# install build tools
 RUN set -x \
     && addgroup -g 101 -S nginx \
     && adduser -S -D -H -u 101 -h /var/cache/nginx -s /sbin/nologin -G nginx -g nginx nginx \
@@ -23,12 +24,19 @@ RUN set -x \
     curl \
     git
 
+# install libxml2 for njs
+RUN apk add libxml2
+
 WORKDIR /build 
 
 # download nginx 
 RUN curl -OL http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz \
     && tar -xvzf nginx-${NGINX_VERSION}.tar.gz && rm nginx-${NGINX_VERSION}.tar.gz \
     && git clone https://github.com/gabihodoroaga/nginx-ntlm-module.git
+
+# download njs
+RUN curl -O -L https://github.com/nginx/njs/archive/refs/tags/${NJS_VERSION}.tar.gz \
+    && tar -xvzf ${NJS_VERSION}.tar.gz
 
 RUN cd nginx-${NGINX_VERSION}/ \
     && ./configure \
@@ -76,6 +84,8 @@ RUN cd nginx-${NGINX_VERSION}/ \
         --with-ld-opt=-Wl,--as-needed \
         # add the ntlm module
         --add-module=../nginx-ntlm-module \
+		# add njs module
+		--add-module=../njs-${NJS_VERSION}/nginx \
     && make \
     && make install \
     && mkdir -p /var/cache/nginx
